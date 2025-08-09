@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>フラクタル心理学ビンゴゲーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+        }
+        
+        .cell-hover:hover {
+            transform: scale(1.05);
+        }
+        
+        .cell-completed {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        }
+        
+        .cell-selected {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            border-color: #60a5fa;
+            box-shadow: 0 10px 25px rgba(96, 165, 250, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .bingo-celebration {
+            animation: bounce 0.6s ease-in-out;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                transform: translate3d(0,0,0);
+            }
+            40%, 43% {
+                transform: translate3d(0, -30px, 0);
+            }
+            70% {
+                transform: translate3d(0, -15px, 0);
+            }
+            90% {
+                transform: translate3d(0, -4px, 0);
+            }
+        }
+        
+        .option-button {
+            transition: all 0.2s ease;
+        }
+        
+        .option-button:hover {
+            background-color: #f3f4f6;
+            border-color: #d1d5db;
+        }
+        
+        .option-selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="max-w-6xl mx-auto p-6 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 min-h-screen">
+        <!-- ヘッダー -->
+        <div class="text-center mb-8">
+            <div class="flex items-center justify-center gap-3 mb-4">
+                <div class="p-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <circle cx="12" cy="12" r="6"/>
+                        <circle cx="12" cy="12" r="2"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                        フラクタル心理学ビンゴ
+                    </h1>
+                    <p class="text-lg font-medium text-gray-700">一色真宇理論 学習ゲーム</p>
+                </div>
+            </div>
+            <p class="text-gray-600">3つ揃えてビンゴを目指そう！</p>
+        </div>
+
+        <!-- スコア表示 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-white/20 text-center">
+                <div id="score" class="text-2xl font-bold text-green-600">0</div>
+                <div class="text-sm text-gray-600">正解数</div>
+            </div>
+            <div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-white/20 text-center">
+                <div id="attempts" class="text-2xl font-bold text-blue-600">0</div>
+                <div class="text-sm text-gray-600">挑戦数</div>
+            </div>
+            <div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-white/20 text-center">
+                <div id="bingo-lines" class="text-2xl font-bold text-purple-600">0</div>
+                <div class="text-sm text-gray-600">ビンゴライン</div>
+            </div>
+            <div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-white/20 text-center">
+                <div id="accuracy" class="text-2xl font-bold text-orange-600">0%</div>
+                <div class="text-sm text-gray-600">正答率</div>
+            </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- ビンゴボード -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                            <path d="M7 4V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v2"/>
+                            <path d="M7 4h10l1 9H6l1-9Z"/>
+                        </svg>
+                        ビンゴボード
+                    </h2>
+                    <button id="new-game" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-200 shadow-lg">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                        </svg>
+                        新しいゲーム
+                    </button>
+                </div>
+
+                <div id="bingo-board" class="grid grid-cols-3 gap-3 bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/30">
+                    <!-- ビンゴセルはJSで生成 -->
+                </div>
+
+                <!-- ビンゴ達成表示 -->
+                <div id="bingo-celebration" class="hidden bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-6 rounded-2xl shadow-xl text-center bingo-celebration">
+                    <div class="flex items-center justify-center gap-3 mb-3">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="8" r="6"/>
+                            <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+                        </svg>
+                        <h3 class="text-2xl font-bold">🎉 ビンゴ達成！ 🎉</h3>
+                    </div>
+                    <p id="bingo-message" class="text-lg">おめでとうございます！</p>
+                    <div class="mt-4">
+                        <span id="final-accuracy" class="text-sm bg-white/20 px-3 py-1 rounded-full"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 問題エリア -->
+            <div id="question-area" class="space-y-4">
+                <!-- 待機状態 -->
+                <div id="waiting-state" class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-8 border border-white/30 text-center">
+                    <div class="mb-4">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-purple-500 mb-4">
+                            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+                        </svg>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">問題を選択してください</h3>
+                        <p class="text-gray-600">ビンゴボードのマスをクリックして問題に挑戦しよう！</p>
+                    </div>
+                    <div class="bg-gradient-to-r from-purple-100 to-blue-100 rounded-lg p-4">
+                        <p class="text-sm text-gray-700">💡 ヒント: 縦・横・斜めのいずれかに3つ正解を揃えるとビンゴです！</p>
+                    </div>
+                </div>
+
+                <!-- 問題表示 -->
+                <div id="question-state" class="hidden bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/30">
+                    <div class="mb-4">
+                        <div id="question-tags" class="flex items-center gap-2 mb-3"></div>
+                        <h3 id="question-title" class="text-lg font-bold text-gray-800 mb-4"></h3>
+                        <p id="question-text" class="text-gray-700 mb-6"></p>
+                    </div>
+                    <div id="options-container" class="space-y-3"></div>
+                    <button id="submit-answer" class="w-full mt-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-600 hover:to-blue-600 transition-all duration-200 flex items-center justify-center gap-2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>
+                        </svg>
+                        回答する
+                    </button>
+                </div>
+
+                <!-- 結果表示 -->
+                <div id="result-state" class="hidden rounded-2xl shadow-xl p-6 border border-white/30">
+                    <div id="result-content" class="p-6 rounded-xl text-center">
+                        <div id="result-icon" class="flex items-center justify-center gap-2 mb-4"></div>
+                        <div class="mb-4">
+                            <p class="text-sm text-gray-600 mb-2">正解：</p>
+                            <p id="correct-answer" class="font-medium text-gray-800"></p>
+                        </div>
+                        <button id="next-question" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200">
+                            次の問題へ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ゲームデータ
+        const allCards = [
+            {
+                id: 1,
+                category: 'TAW基本理論',
+                question: 'TAWとは何の略ですか？',
+                answer: 'Theory of an Advanced World（進化した世界の理論）',
+                options: [
+                    'Theory of an Advanced World（進化した世界の理論）',
+                    'The Advanced Wisdom（進歩した知恵）',
+                    'Thinking and World（思考と世界）',
+                    'Time and Wave（時間と波動）'
+                ],
+                correctIndex: 0,
+                difficulty: 'easy'
+            },
+            {
+                id: 2,
+                category: 'TAW基本理論',
+                question: 'フラクタル心理学の根本原理で正しいものは？',
+                answer: '思考が100%例外なく現実化する',
+                options: [
+                    '運命は決まっている',
+                    '思考が100%例外なく現実化する',
+                    '環境が人格を作る',
+                    '遺伝が性格を決める'
+                ],
+                correctIndex: 1,
+                difficulty: 'medium'
+            },
+            {
+                id: 3,
+                category: 'こころの進化',
+                question: '「こころの進化の6つの階段」で変化するものは？',
+                answer: '善悪の概念や価値観',
+                options: [
+                    '身体的な能力',
+                    '記憶力',
+                    '善悪の概念や価値観',
+                    '収入レベル'
+                ],
+                correctIndex: 2,
+                difficulty: 'medium'
+            },
+            {
+                id: 4,
+                category: '問題解決技法',
+                question: '問題の原因となる3つの要素は？',
+                answer: '傲慢・怠慢・無知',
+                options: [
+                    '過去・現在・未来',
+                    '思考・感情・行動',
+                    '傲慢・怠慢・無知',
+                    '遺伝・環境・運命'
+                ],
+                correctIndex: 2,
+                difficulty: 'easy'
+            },
+            {
+                id: 5,
+                category: '実践技法',
+                question: 'インナーチャイルド修正法が対象とする脳の部位は？',
+                answer: '大脳辺縁系',
+                options: [
+                    '前頭葉',
+                    '大脳辺縁系',
+                    '小脳',
+                    '脳幹'
+                ],
+                correctIndex: 1,
+                difficulty: 'hard'
+            },
+            {
+                id: 6,
+                category: '潜在意識',
+                question: '360度投影の法則とは？',
+                answer: '周りの現象はすべて自分の投影',
+                options: [
+                    '全方位に意識を向けること',
+                    '周りの現象はすべて自分の投影',
+                    '円形に座って瞑想すること',
+                    '360度回転しながら思考すること'
+                ],
+                correctIndex: 1,
+                difficulty: 'medium'
+            },
+            {
+                id: 7,
+                category: '自分革命',
+                question: 'フラクタル心理学での時間の扱いは？',
+                answer: '現在の思考→過去の現象',
+                options: [
+                    '過去→現在→未来',
+                    '現在の思考→過去の現象',
+                    '未来→現在→過去',
+                    '時間は存在しない'
+                ],
+                correctIndex: 1,
+                difficulty: 'hard'
+            },
+            {
+                id: 8,
+                category: '現象解読',
+                question: 'TAW理論発見のきっかけとなった研究は？',
+                answer: '地形と歴史の関係性',
+                options: [
+                    '量子物理学の研究',
+                    '地形と歴史の関係性',
+                    '遺伝子の研究',
+                    '脳科学の研究'
+                ],
+                correctIndex: 1,
+                difficulty: 'hard'
+            },
+            {
+                id: 9,
+                category: '実践技法',
+                question: 'A→B思考法の目的は？',
+                answer: 'ネガティブ思考をポジティブに転換',
+                options: [
+                    '記憶力を向上させる',
+                    'ネガティブ思考をポジティブに転換',
+                    '論理的思考を鍛える',
+                    '集中力を高める'
+                ],
+                correctIndex: 1,
+                difficulty: 'easy'
+            },
+            {
+                id: 10,
+                category: '愛と健康',
+                question: '「本当の愛」の定義で正しいものは？',
+                answer: '相手の成長を促す愛',
+                options: [
+                    '何でも許すこと',
+                    '甘やかすこと',
+                    '相手の成長を促す愛',
+                    '同情すること'
+                ],
+                correctIndex: 2,
+                difficulty: 'hard'
+            },
+            {
+                id: 11,
+                category: 'TAW基本理論',
+                question: 'MONISM（一元論）とは？',
+                answer: 'この世には自分一人しかいない',
+                options: [
+                    'すべては一つの原理で説明できる',
+                    'この世には自分一人しかいない',
+                    '一つの神が全てを支配している',
+                    '物質と精神は同一である'
+                ],
+                correctIndex: 1,
+                difficulty: 'medium'
+            },
+            {
+                id: 12,
+                category: '実践技法',
+                question: 'モニタリングとは何ですか？',
+                answer: '自分の思考や感情を客観視すること',
+                options: [
+                    '他人を観察すること',
+                    '自分の思考や感情を客観視すること',
+                    'データを収集すること',
+                    '監視システムを作ること'
+                ],
+                correctIndex: 1,
+                difficulty: 'medium'
+            }
+        ];
+
+        // ゲーム状態
+        let gameBoard = [];
+        let currentCell = null;
+        let completedCells = new Set();
+        let bingoLines = [];
+        let gameComplete = false;
+        let selectedAnswer = null;
+        let score = 0;
+        let attempts = 0;
+
+        // ビンゴパターン
+        const bingoPatterns = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // 横
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // 縦
+            [0, 4, 8], [2, 4, 6] // 斜め
+        ];
+
+        // カテゴリ色の定義
+        const getCategoryColor = (category) => {
+            const colors = {
+                'TAW基本理論': 'bg-purple-100 text-purple-800',
+                'こころの進化': 'bg-blue-100 text-blue-800',
+                '問題解決技法': 'bg-green-100 text-green-800',
+                '実践技法': 'bg-orange-100 text-orange-800',
+                '潜在意識': 'bg-pink-100 text-pink-800',
+                '自分革命': 'bg-indigo-100 text-indigo-800',
+                '現象解読': 'bg-teal-100 text-teal-800',
+                '愛と健康': 'bg-rose-100 text-rose-800'
+            };
+            return colors[category] || 'bg-gray-100 text-gray-800';
+        };
+
+        // 難易度色の定義
+        const getDifficultyColor = (difficulty) => {
+            switch(difficulty) {
+                case 'easy': return 'border-green-300 bg-green-50';
+                case 'medium': return 'border-yellow-300 bg-yellow-50';
+                case 'hard': return 'border-red-300 bg-red-50';
+                default: return 'border-gray-300 bg-gray-50';
+            }
+        };
+
+        // ゲーム初期化
+        function initializeGame() {
+            gameBoard = [...allCards].sort(() => Math.random() - 0.5).slice(0, 9);
+            completedCells = new Set();
+            bingoLines = [];
+            gameComplete = false;
+            currentCell = null;
+            selectedAnswer = null;
+            score = 0;
+            attempts = 0;
+            
+            updateScoreDisplay();
+            renderBingoBoard();
+            showWaitingState();
+            document.getElementById('bingo-celebration').classList.add('hidden');
+        }
+
+        // スコア表示更新
+        function updateScoreDisplay() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('attempts').textContent = attempts;
+            document.getElementById('bingo-lines').textContent = bingoLines.length;
+            const accuracy = attempts > 0 ? Math.round((score / attempts) * 100) : 0;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+        }
+
+        // ビンゴボード描画
+        function renderBingoBoard() {
+            const board = document.getElementById('bingo-board');
+            board.innerHTML = '';
+            
+            gameBoard.forEach((card, index) => {
+                const cell = document.createElement('div');
+                const isCompleted = completedCells.has(index);
+                const isSelected = currentCell === index;
+                
+                cell.className = `
+                    aspect-square p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 cell-hover
+                    ${isCompleted ? 'cell-completed' : 
+                      isSelected ? 'cell-selected' : 
+                      getDifficultyColor(card.difficulty)}
+                `;
+                
+                if (isCompleted) {
+                    cell.innerHTML = `
+                        <div class="h-full flex flex-col items-center justify-center text-center">
+                            <div class="space-y-2">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20,6 9,17 4,12"/>
+                                </svg>
+                                <div class="text-xs font-medium">正解！</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    cell.innerHTML = `
+                        <div class="h-full flex flex-col items-center justify-center text-center">
+                            <div class="space-y-2">
+                                <div class="text-xs px-2 py-1 rounded-full font-medium ${getCategoryColor(card.category)}">
+                                    ${card.category}
+                                </div>
+                                <div class="text-xs text-gray-600 leading-tight">
+                                    問題 ${index + 1}
+                                </div>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-gray-500">
+                                    <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/>
+                                    <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/>
+                                </svg>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                cell.addEventListener('click', () => handleCellClick(index));
+                board.appendChild(cell);
+            });
+        }
+
+        // セルクリック処理
+        function handleCellClick(index) {
+            if (completedCells.has(index) || currentCell !== null) return;
+            
+            currentCell = index;
+            selectedAnswer = null;
+            renderBingoBoard();
+            showQuestionState();
+        }
+
+        // 待機状態表示
+        function showWaitingState() {
+            document.getElementById('waiting-state').classList.remove('hidden');
+            document.getElementById('question-state').classList.add('hidden');
+            document.getElementById('result-state').classList.add('hidden');
+        }
+
+        // 問題状態表示
+        function showQuestionState() {
+            if (currentCell === null) return;
+            
+            const card = gameBoard[currentCell];
+            
+            // タグ表示
+            const tagsContainer = document.getElementById('question-tags');
+            tagsContainer.innerHTML = `
+                <span class="px-3 py-1 rounded-full text-xs font-medium ${getCategoryColor(card.category)}">
+                    ${card.category}
+                </span>
+                <span class="px-3 py-1 rounded-full text-xs font-medium ${
+                    card.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                    card.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                }">
+                    ${card.difficulty === 'easy' ? '基本' :
+                      card.difficulty === 'medium' ? '標準' : '上級'}
+                </span>
+            `;
+            
+            // 問題表示
+            document.getElementById('question-title').textContent = `問題 ${currentCell + 1}`;
+            document.getElementById('question-text').textContent = card.question;
+            
+            // 選択肢表示
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+            
+            card.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'w-full p-4 text-left rounded-lg border-2 option-button border-gray-200 bg-gray-50';
+                button.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center text-sm font-bold">
+                            ${String.fromCharCode(65 + index)}
+                        </span>
+                        ${option}
+                    </div>
+                `;
+                
+                button.addEventListener('click', () => handleAnswerSelect(index, button));
+                optionsContainer.appendChild(button);
+            });
+            
+            // 回答ボタン
+            const submitButton = document.getElementById('submit-answer');
+            submitButton.disabled = true;
+            submitButton.addEventListener('click', submitAnswer);
+            
+            document.getElementById('waiting-state').classList.add('hidden');
+            document.getElementById('question-state').classList.remove('hidden');
+            document.getElementById('result-state').classList.add('hidden');
+        }
+
+        // 回答選択処理
+        function handleAnswerSelect(answerIndex, buttonElement) {
+            selectedAnswer = answerIndex;
+            
+            // 全ボタンのスタイルリセット
+            document.querySelectorAll('.option-button').forEach(btn => {
+                btn.className = 'w-full p-4 text-left rounded-lg border-2 option-button border-gray-200 bg-gray-50';
+                const circle = btn.querySelector('span');
+                circle.className = 'w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center text-sm font-bold';
+            });
+            
+            // 選択されたボタンのスタイル変更
+            buttonElement.className = 'w-full p-4 text-left rounded-lg border-2 option-button option-selected';
+            const circle = buttonElement.querySelector('span');
+            circle.className = 'w-6 h-6 rounded-full border-2 border-blue-500 bg-blue-500 text-white flex items-center justify-center text-sm font-bold';
+            
+            document.getElementById('submit-answer').disabled = false;
+        }
+
+        // 回答提出処理
+        function submitAnswer() {
+            if (selectedAnswer === null || currentCell === null) return;
+            
+            const card = gameBoard[currentCell];
+            const correct = selectedAnswer === card.correctIndex;
+            attempts++;
+            
+            if (correct) {
+                score++;
+                completedCells.add(currentCell);
+            }
+            
+            updateScoreDisplay();
+            checkBingo();
+            showResultState(correct, card.answer);
+        }
+
+        // 結果状態表示
+        function showResultState(isCorrect, correctAnswer) {
+            const resultContent = document.getElementById('result-content');
+            const resultIcon = document.getElementById('result-icon');
+            
+            if (isCorrect) {
+                resultContent.className = 'p-6 rounded-xl text-center bg-green-100 border-2 border-green-300';
+                resultIcon.innerHTML = `
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600">
+                        <polyline points="20,6 9,17 4,12"/>
+                    </svg>
+                    <h4 class="text-xl font-bold text-green-800">正解！</h4>
+                `;
+            } else {
+                resultContent.className = 'p-6 rounded-xl text-center bg-red-100 border-2 border-red-300';
+                resultIcon.innerHTML = `
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600">
+                        <path d="M18 6 6 18"/>
+                        <path d="m6 6 12 12"/>
+                    </svg>
+                    <h4 class="text-xl font-bold text-red-800">不正解</h4>
+                `;
+            }
+            
+            document.getElementById('correct-answer').textContent = correctAnswer;
+            document.getElementById('next-question').addEventListener('click', nextQuestion);
+            
+            document.getElementById('waiting-state').classList.add('hidden');
+            document.getElementById('question-state').classList.add('hidden');
+            document.getElementById('result-state').classList.remove('hidden');
+        }
+
+        // 次の問題へ
+        function nextQuestion() {
+            currentCell = null;
+            selectedAnswer = null;
+            renderBingoBoard();
+            showWaitingState();
+        }
+
+        // ビンゴチェック
+        function checkBingo() {
+            const newBingoLines = [];
+            bingoPatterns.forEach((pattern, index) => {
+                if (pattern.every(cell => completedCells.has(cell))) {
+                    newBingoLines.push(index);
+                }
+            });
+            
+            bingoLines = newBingoLines;
+            updateScoreDisplay();
+            
+            if (bingoLines.length > 0 && !gameComplete) {
+                gameComplete = true;
+                showBingoCelebration();
+            }
+        }
+
+        // ビンゴ達成表示
+        function showBingoCelebration() {
+            const celebration = document.getElementById('bingo-celebration');
+            const message = document.getElementById('bingo-message');
+            const finalAccuracy = document.getElementById('final-accuracy');
+            
+            message.textContent = `おめでとうございます！${bingoLines.length}ライン完成です！`;
+            finalAccuracy.textContent = `正答率: ${Math.round((score / attempts) * 100)}%`;
+            
+            celebration.classList.remove('hidden');
+        }
+
+        // イベントリスナー設定
+        document.getElementById('new-game').addEventListener('click', initializeGame);
+
+        // ゲーム開始
+        initializeGame();
+    </script>
+</body>
+</html>
